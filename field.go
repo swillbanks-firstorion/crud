@@ -2,6 +2,7 @@ package crud
 
 import (
 	"fmt"
+	"maps"
 	"reflect"
 	"regexp"
 	"strings"
@@ -25,6 +26,7 @@ type Field struct {
 	allow       enum
 	strip       *bool
 	unknown     *bool
+	anyOf       []Field
 }
 
 func (f Field) String() string {
@@ -162,7 +164,9 @@ func (f *Field) Validate(value interface{}) error {
 			}
 		}
 	case map[string]interface{}:
-		if f.kind != KindObject {
+		if f.kind == KindAnyOf {
+			return validateAny("", f, v)
+		} else if f.kind != KindObject {
 			return errWrongType
 		}
 		return validateObject("", f, v)
@@ -175,6 +179,27 @@ func (f *Field) Validate(value interface{}) error {
 	}
 
 	return nil
+}
+
+func validateAny(name string, f *Field, value map[string]interface{}) error {
+	errs := make([]error, 0, 2)
+	for _, oneOf := range f.anyOf {
+		copyOf := maps.Clone(value)
+		if err := validateObjectNoStrip(name, &oneOf, copyOf); err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		return validateObject(name, &oneOf, value)
+	}
+	var errStr error
+	for _, err := range errs {
+		if errStr == nil {
+			errStr = err
+		} else {
+			errStr = fmt.Errorf("%w\n%w", errStr, err)
+		}
+	}
+	return fmt.Errorf("object failed validation - must match one of the following:\n%w", errStr)
 }
 
 // validateObject is a recursive function that validates the field values in the object. It also
@@ -247,12 +272,75 @@ func validateObject(name string, field *Field, input interface{}) error {
 				return fmt.Errorf("object validation failed for field %v.%v: %w", name, childName, errRequired)
 			} else if newV == nil && childField._default != nil {
 				v[childName] = childField._default
+			} else if childField.kind == KindAnyOf {
+				if err := validateAny(name+"."+childName, &childField, (v[childName]).(map[string]interface{})); err != nil {
+					return err
+				}
 			} else if err := validateObject(name+"."+childName, &childField, v[childName]); err != nil {
 				return err
 			}
 		}
 	default:
 		return fmt.Errorf("object validation failed for type %v: %w", reflect.TypeOf(v), errWrongType)
+	}
+	return nil
+}
+
+func validateObjectNoStrip(name string, field *Field, input interface{}) error {
+	switch v := input.(type) {
+	case []interface{}:
+		if err := field.Validate(v); err != nil {
+			return fmt.Errorf("object validation failed for field %v: %w", name, err)
+		}
+		if field.arr != nil {
+			for i, item := range v {
+				if err := validateObjectNoStrip(fmt.Sprintf("%v[%v]", name, i), field.arr, item); err != nil {
+					return err
+				}
+			}
+		}
+	case map[string]interface{}:
+		vCopy := maps.Clone(v)
+		if !field.isAllowUnknown() {
+			for key := range vCopy {
+				if _, ok := field.obj[key]; !ok {
+					return fmt.Errorf("unknown field in object: %v %w", key, errUnknown)
+				}
+			}
+		}
+
+		if field.isStripUnknown() {
+			for key := range vCopy {
+				if _, ok := field.obj[key]; !ok {
+					delete(vCopy, key)
+				}
+			}
+		}
+
+		for childName, childField := range field.obj {
+			// child fields inherit parent's settings, unless specified on child
+			if childField.strip == nil {
+				childField.strip = field.strip
+			}
+			if childField.unknown == nil {
+				childField.unknown = field.unknown
+			}
+
+			newV := vCopy[childName]
+			if newV == nil && childField.required != nil && *childField.required {
+				return fmt.Errorf("object validation failed for field %v.%v: %w", name, childName, errRequired)
+			} else if newV == nil && childField._default != nil {
+				vCopy[childName] = childField._default
+			} else if childField.kind == KindAnyOf {
+				if err := validateAny(name+"."+childName, &childField, (v[childName]).(map[string]interface{})); err != nil {
+					return err
+				}
+			} else if err := validateObjectNoStrip(name+"."+childName, &childField, vCopy[childName]); err != nil {
+				return err
+			}
+		}
+	default:
+		return validateObject(name, field, input)
 	}
 	return nil
 }
@@ -266,6 +354,7 @@ const (
 	KindArray   = "array"
 	KindFile    = "file"
 	KindInteger = "integer"
+	KindAnyOf   = "anyof"
 )
 
 // Number creates a field with floating point type
@@ -314,6 +403,18 @@ func File() Field {
 // Integer creates a field with integer type
 func Integer() Field {
 	return Field{kind: KindInteger}
+}
+
+func AnyOf(fields ...Field) Field {
+	if len(fields) == 0 {
+		panic("anyof requires at least one field")
+	}
+	for _, f := range fields {
+		if f.kind != KindObject {
+			panic("anyof only accepts object fields")
+		}
+	}
+	return Field{kind: KindAnyOf, anyOf: fields}
 }
 
 // Min specifies a minimum value for this field

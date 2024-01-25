@@ -37,6 +37,26 @@ func TestField_Pattern_Panic(t *testing.T) {
 	String().Pattern("[")
 }
 
+func TestField_AnyOf_Panic(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("The code did not panic")
+		}
+	}()
+
+	AnyOf(String())
+}
+
+func TestField_AnyOf_Panic_No_Fields(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("The code did not panic")
+		}
+	}()
+
+	AnyOf()
+}
+
 func TestField_String(t *testing.T) {
 	table := []struct {
 		Field    Field
@@ -444,6 +464,144 @@ func TestField_Object(t *testing.T) {
 		if v := test.Field.Validate(test.Input); !errors.Is(v, test.Expected) {
 			t.Errorf("%v: For input '%v', expected '%v' got '%v'", i, test.Input, test.Expected, v)
 		}
+	}
+}
+
+func TestField_AnyOf(t *testing.T) {
+	tests := map[string]struct {
+		Field    Field
+		Input    interface{}
+		Expected error
+	}{
+		"Empty": {
+			Field:    AnyOf(Object(map[string]Field{})),
+			Input:    "",
+			Expected: errWrongType,
+		},
+		"Nil": {
+			Field:    AnyOf(Object(map[string]Field{})),
+			Input:    nil,
+			Expected: nil,
+		},
+		"Required - Nil": {
+			Field:    AnyOf(Object(map[string]Field{})).Required(),
+			Input:    nil,
+			Expected: errRequired,
+		},
+		"Required": {
+			Field:    AnyOf(Object(map[string]Field{})).Required(),
+			Input:    map[string]interface{}{},
+			Expected: nil,
+		},
+		"Required - Nested - Single": {
+			Field: AnyOf(Object(map[string]Field{
+				"nested": Integer().Required().Min(1),
+			})),
+			Input:    map[string]interface{}{},
+			Expected: errRequired,
+		},
+		"Wrong Type - Nested": {
+			Field: AnyOf(Object(map[string]Field{
+				"nested": Integer().Required().Min(1),
+			})),
+			Input: map[string]interface{}{
+				"nested": 1.1,
+			},
+			Expected: errWrongType,
+		},
+		"Nested - Single": {
+			Field: AnyOf(Object(map[string]Field{
+				"nested": Integer().Required().Min(1),
+			})),
+			Input: map[string]interface{}{
+				"nested": 1.,
+			},
+			Expected: nil,
+		},
+		"Nested - Multiple": {
+			Field: AnyOf(Object(map[string]Field{
+				"nested1": Integer().Required().Min(1),
+			}), Object(map[string]Field{
+				"nested2": Integer().Required().Min(1),
+			})),
+			Input: map[string]interface{}{
+				"nested2": 1.,
+				"blue":    32,
+			},
+			Expected: nil,
+		},
+		"SubNested - Multiple": {
+			Field: AnyOf(Object(map[string]Field{
+				"nested": Object(map[string]Field{
+					"sub_nested1": Integer().Required().Min(1),
+				}),
+			}), Object(map[string]Field{
+				"nested": Object(map[string]Field{
+					"sub_nested2": Integer().Required().Min(1),
+				}),
+			})),
+			Input: map[string]interface{}{
+				"nested": map[string]interface{}{
+					"nested2":     1.,
+					"blue":        32.,
+					"sub_nested2": 4.,
+				},
+			},
+			Expected: nil,
+		},
+		"Required - Nested - Multiple": {
+			Field: AnyOf(Object(map[string]Field{
+				"nested1": Integer().Required().Min(1),
+			}), Object(map[string]Field{
+				"nested2": Integer().Required().Min(1),
+			})),
+			Input: map[string]interface{}{
+				"nested3": 1.,
+			},
+			Expected: errRequired,
+		},
+		"Unknown - SubNested": {
+			Field: Object(map[string]Field{
+				"nested": AnyOf(Object(map[string]Field{
+					"sub_nested1": Integer().Required().Min(1),
+				}), Object(map[string]Field{
+					"sub_nested2": Integer().Required().Min(1),
+				}).Strip(false).Unknown(false)),
+			}),
+			Input: map[string]interface{}{
+				"nested": map[string]interface{}{
+					"nested2":     1.,
+					"blue":        32.,
+					"sub_nested2": 4.,
+				},
+			},
+			Expected: errUnknown,
+		},
+		"Required - SubNested - Any": {
+			Field: Object(map[string]Field{
+				"nested": AnyOf(Object(map[string]Field{
+					"sub_nested1": Integer().Required().Min(1),
+				}), Object(map[string]Field{
+					"sub_nested2": Integer().Required().Min(1),
+				})),
+			}),
+			Input: map[string]interface{}{
+				"nested": map[string]interface{}{
+					"nested2":     1.,
+					"blue":        32.,
+					"sub_nested2": 4.,
+				},
+			},
+			Expected: nil,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			if v := test.Field.Validate(test.Input); !errors.Is(v, test.Expected) {
+				t.Errorf("For input '%v', expected '%v' got '%v'", test.Input, test.Expected, v)
+			}
+		})
 	}
 }
 
