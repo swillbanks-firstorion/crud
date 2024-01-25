@@ -196,10 +196,10 @@ func validateAny(name string, f *Field, value map[string]interface{}) error {
 		if errStr == nil {
 			errStr = err
 		} else {
-			errStr = fmt.Errorf("%w\n%w", errStr, err)
+			errStr = fmt.Errorf("%w | %w", errStr, err)
 		}
 	}
-	return fmt.Errorf("object failed validation - must match one of the following:\n%w", errStr)
+	return fmt.Errorf("object failed validation - must match one of the following: %w", errStr)
 }
 
 // validateObject is a recursive function that validates the field values in the object. It also

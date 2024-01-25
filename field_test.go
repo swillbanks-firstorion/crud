@@ -594,6 +594,235 @@ func TestField_AnyOf(t *testing.T) {
 			},
 			Expected: nil,
 		},
+		"Array": {
+			Field: Array().Items(AnyOf(
+				Object(map[string]Field{
+					"field1": String().Min(1).Required(),
+				}),
+				Object(map[string]Field{
+					"field2": Integer().Min(1),
+				}),
+			)),
+			Input: []interface{}{
+				map[string]interface{}{
+					"field1": "found",
+				},
+				map[string]interface{}{
+					"field2": 2.,
+				},
+			},
+			Expected: nil,
+		},
+		"Array - Required": {
+			Field: Array().Items(AnyOf(
+				Object(map[string]Field{
+					"field1": String().Min(1).Required(),
+				}),
+				Object(map[string]Field{
+					"field2": Integer().Min(1).Required(),
+				}),
+			)),
+			Input: []interface{}{
+				map[string]interface{}{
+					"field3": "found",
+				},
+			},
+			Expected: errRequired,
+		},
+		"Array - Wrong Type": {
+			Field: Array().Items(AnyOf(
+				Object(map[string]Field{
+					"field1": String().Min(1).Required(),
+				}),
+				Object(map[string]Field{
+					"field2": Integer().Min(1),
+				}),
+			)),
+			Input: []interface{}{
+				map[string]interface{}{
+					"field2": "wrong",
+				},
+			},
+			Expected: errWrongType,
+		},
+		"Nested Array": {
+			Field: Object(map[string]Field{
+				"items": Array().Items(AnyOf(
+					Object(map[string]Field{
+						"field1": String().Min(1).Required(),
+					}),
+					Object(map[string]Field{
+						"field2": Integer().Min(1),
+					}),
+				)),
+			}),
+			Input: map[string]interface{}{
+				"items": []interface{}{
+					map[string]interface{}{
+						"field1": "found",
+					},
+					map[string]interface{}{
+						"field2": 2.,
+					},
+				},
+			},
+			Expected: nil,
+		},
+		"Nested Array - Required": {
+			Field: Object(map[string]Field{
+				"items": Array().Items(AnyOf(
+					Object(map[string]Field{
+						"field1": String().Min(1).Required(),
+					}),
+					Object(map[string]Field{
+						"field2": Integer().Min(1).Required(),
+					}),
+				)),
+			}),
+			Input: map[string]interface{}{
+				"items": []interface{}{
+					map[string]interface{}{
+						"field3": "found",
+					},
+					map[string]interface{}{
+						"field2": 2.,
+					},
+				},
+			},
+			Expected: errRequired,
+		},
+		"Nested Array of Array": {
+			Field: Object(map[string]Field{
+				"items": Array().Items(Array().Items(AnyOf(
+					Object(map[string]Field{
+						"field1": String().Min(1).Required(),
+					}),
+					Object(map[string]Field{
+						"field2": Integer().Min(1),
+					}),
+				))),
+			}),
+			Input: map[string]interface{}{
+				"items": []interface{}{
+					[]interface{}{
+						map[string]interface{}{
+							"field1": "found",
+						},
+					},
+					[]interface{}{
+						map[string]interface{}{
+							"field2": 2.,
+						},
+					},
+				},
+			},
+			Expected: nil,
+		},
+		"Nested Array of Array - Required": {
+			Field: Object(map[string]Field{
+				"items": Array().Items(Array().Items(AnyOf(
+					Object(map[string]Field{
+						"field1": String().Min(1).Required(),
+					}),
+					Object(map[string]Field{
+						"field2": Integer().Min(1).Required(),
+					}),
+				))),
+			}),
+			Input: map[string]interface{}{
+				"items": []interface{}{
+					[]interface{}{
+						map[string]interface{}{
+							"field3": "found",
+						},
+					},
+					[]interface{}{
+						map[string]interface{}{
+							"field2": 2.,
+						},
+					},
+				},
+			},
+			Expected: errRequired,
+		},
+		"SubNested Array": {
+			Field: Object(map[string]Field{
+				"nested": AnyOf(Object(map[string]Field{
+					"sub_nested1": Integer().Required().Min(1),
+					"items": Array().Items(AnyOf(
+						Object(map[string]Field{
+							"field1": String().Min(1).Required(),
+						}),
+						Object(map[string]Field{
+							"field2": Integer().Min(1),
+						}),
+					)),
+				}), Object(map[string]Field{
+					"sub_nested2": Integer().Required().Min(1),
+					"items": Array().Items(AnyOf(
+						Object(map[string]Field{
+							"field1": String().Min(1).Required(),
+						}),
+						Object(map[string]Field{
+							"field2": Integer().Min(1),
+						}),
+					)),
+				})),
+			}),
+			Input: map[string]interface{}{
+				"nested": map[string]interface{}{
+					"sub_nested2": 4.,
+					"items": []interface{}{
+						map[string]interface{}{
+							"field1": "found",
+						},
+						map[string]interface{}{
+							"field2": 2.,
+						},
+					},
+				},
+			},
+			Expected: nil,
+		},
+		"SubNested Array - Required": {
+			Field: Object(map[string]Field{
+				"nested": AnyOf(Object(map[string]Field{
+					"sub_nested1": Integer().Required().Min(1),
+					"items": Array().Items(AnyOf(
+						Object(map[string]Field{
+							"field1": String().Min(1).Required(),
+						}),
+						Object(map[string]Field{
+							"field2": Integer().Min(1),
+						}),
+					)),
+				}), Object(map[string]Field{
+					"sub_nested2": Integer().Required().Min(1),
+					"items": Array().Items(AnyOf(
+						Object(map[string]Field{
+							"field1": String().Min(1).Required(),
+						}),
+						Object(map[string]Field{
+							"field2": Integer().Min(1),
+						}),
+					)),
+				})),
+			}),
+			Input: map[string]interface{}{
+				"nested": map[string]interface{}{
+					"sub_nested2": 4.,
+					"items": []interface{}{
+						map[string]interface{}{
+							"field3": "found",
+						},
+						map[string]interface{}{
+							"field2": 0.,
+						},
+					},
+				},
+			},
+			Expected: errRequired,
+		},
 	}
 
 	for name, test := range tests {
