@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/jakecoffman/crud"
-	"github.com/jakecoffman/crud/adapters/echo-adapter"
-	"github.com/jakecoffman/crud/adapters/echo-adapter/example/widgets"
+	"github.com/swillbanks-firstorion/crud"
+	"github.com/swillbanks-firstorion/crud/adapters/echo-adapter"
+	"github.com/swillbanks-firstorion/crud/adapters/echo-adapter/example/widgets"
 	"log"
 )
 

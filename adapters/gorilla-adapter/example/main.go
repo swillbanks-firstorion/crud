@@ -3,8 +3,8 @@ package main
 import (
 	"encoding/json"
 	"github.com/gorilla/mux"
-	"github.com/jakecoffman/crud"
-	"github.com/jakecoffman/crud/adapters/gorilla-adapter"
+	"github.com/swillbanks-firstorion/crud"
+	"github.com/swillbanks-firstorion/crud/adapters/gorilla-adapter"
 	"log"
 	"math/rand"
 	"net/http"

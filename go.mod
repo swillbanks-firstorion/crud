@@ -1,4 +1,4 @@
-module github.com/jakecoffman/crud
+module github.com/swillbanks-firstorion/crud
 
 go 1.21.0
 

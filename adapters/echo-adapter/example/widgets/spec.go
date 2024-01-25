@@ -1,6 +1,6 @@
 package widgets
 
-import "github.com/jakecoffman/crud"
+import "github.com/swillbanks-firstorion/crud"
 
 var tags = []string{"Widgets"}
 

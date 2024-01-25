@@ -3,7 +3,7 @@ package crud
 import (
 	_ "embed"
 	"fmt"
-	"github.com/jakecoffman/crud/option"
+	"github.com/swillbanks-firstorion/crud/option"
 	"regexp"
 	"strings"
 )
@@ -177,5 +177,6 @@ func pathParms(swaggerUrl string) (params []string) {
 }
 
 // SwaggerUiTemplate contains the html for swagger UI.
+//
 //go:embed swaggerui.html
 var SwaggerUiTemplate []byte

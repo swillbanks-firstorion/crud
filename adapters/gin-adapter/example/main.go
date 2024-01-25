@@ -2,8 +2,8 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/jakecoffman/crud"
-	"github.com/jakecoffman/crud/adapters/gin-adapter"
+	"github.com/swillbanks-firstorion/crud"
+	"github.com/swillbanks-firstorion/crud/adapters/gin-adapter"
 	"log"
 )
 

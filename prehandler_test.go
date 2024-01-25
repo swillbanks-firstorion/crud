@@ -3,7 +3,7 @@ package crud
 import (
 	"encoding/json"
 	"errors"
-	"github.com/jakecoffman/crud/option"
+	"github.com/swillbanks-firstorion/crud/option"
 	"net/url"
 	"testing"
 )
